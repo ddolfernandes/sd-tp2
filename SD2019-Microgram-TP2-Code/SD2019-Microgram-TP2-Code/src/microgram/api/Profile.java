@@ -23,7 +23,7 @@ public class Profile {
 	String fullName;
 	String photoUrl;
 
-	@BsonIgnore
+	
 	int posts;
 
 	@BsonIgnore

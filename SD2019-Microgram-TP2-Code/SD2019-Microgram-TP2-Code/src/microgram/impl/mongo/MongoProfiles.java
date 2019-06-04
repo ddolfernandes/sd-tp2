@@ -35,6 +35,7 @@ public class MongoProfiles implements Profiles {
 	private MongoDatabase db;
 
 	private static final String MONGO_HOSTNAME = "mongodb://mongo1,mongo2,mongo3";
+	
 	private static final String DB_NAME = "mongoDataBase";
 	private static final String DB_USERS_TABLE = "Users";
 	private static final String DB_FOLLOWERS_TABLE = "Followers";
@@ -55,9 +56,9 @@ public class MongoProfiles implements Profiles {
 		// nome arbitrario para a database?
 		db = mongo.getDatabase(DB_NAME).withCodecRegistry(pojoCodecRegistry);
 		// basta ir buscar a collection no construtor? -> bson propertys do Profile,
-		// apesar das variaveis
+
 		usersCol = db.getCollection(DB_USERS_TABLE, Profile.class);
-		// criar index no construtor?
+
 		usersCol.createIndex(Indexes.ascending(USERID), new IndexOptions().unique(true));
 
 		followersCol = db.getCollection(DB_USERS_TABLE, UserFollowRelation.class);
@@ -118,15 +119,20 @@ public class MongoProfiles implements Profiles {
 		return ok();
 	}
 
+	
 	@Override
-	public Result<List<Profile>> search(String prefix) {
+	public Result<List<Profile>> search(String prefix) { //regex do search?
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Result<Void> follow(String userId1, String userId2, boolean isFollowing) {
+		if (!profileExists(userId1) || !profileExists(userId2))
+			return error(NOT_FOUND);
+		
 		return null;
+
 	}
 
 	@Override
@@ -140,6 +146,9 @@ public class MongoProfiles implements Profiles {
 		return ok(isFollowing);
 	}
 
+	/*
+	 * metodo auxiliar para verificar se o perfil com userId existe
+	 */
 	private boolean profileExists(String userId) {
 		return usersCol.find(Filters.eq(USERID, userId)).first() != null;
 	}
