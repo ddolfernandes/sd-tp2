@@ -3,6 +3,7 @@ package microgram.impl.mongo;
 import static microgram.api.java.Result.error;
 import static microgram.api.java.Result.ok;
 import static microgram.api.java.Result.ErrorCode.CONFLICT;
+import static microgram.api.java.Result.ErrorCode.NOT_FOUND;
 
 import java.net.UnknownHostException;
 import java.util.List;
@@ -17,6 +18,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 
@@ -43,6 +45,7 @@ public class MongoProfiles implements Profiles {
 		
 		//nome arbitrario para a database?
 		db = mongo.getDatabase(DB_NAME).withCodecRegistry(pojoCodecRegistry);
+		//necessario ir buscar em cada metodo ou no construtor basta?
 		dbCol = db.getCollection(DB_TABLE, Profile.class);
 		
 		//criar index no construtor?
@@ -51,9 +54,14 @@ public class MongoProfiles implements Profiles {
 	}
 
 	@Override
-	public Result<Profile> getProfile(String userId) {
-		// TODO Auto-generated method stub
-		return null;
+	public Result<Profile> getProfile(String userId) {	//posso fazer a comparacao do profile==null?
+		Profile profile = dbCol.find(Filters.eq(USERID, userId)).first();
+		
+		if(profile==null)
+			return error(NOT_FOUND);
+		
+		return ok(profile);
+		
 	}
 
 	@Override
