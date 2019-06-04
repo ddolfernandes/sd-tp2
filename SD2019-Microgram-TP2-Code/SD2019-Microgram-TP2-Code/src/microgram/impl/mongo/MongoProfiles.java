@@ -23,19 +23,26 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 
 import microgram.api.Profile;
+import microgram.api.UserFollowRelation;
 import microgram.api.java.Profiles;
 import microgram.api.java.Result;
 
 public class MongoProfiles implements Profiles {
 	
-	
+	//melhor maneira de modelar os followers e following?
 
 	private MongoDatabase db;
-	MongoCollection<Profile> dbCol;
+	
 	private static final String MONGO_HOSTNAME = "mongodb://mongo1,mongo2,mongo3";
 	private static final String DB_NAME = "mongoDataBase";
-	private static final String DB_TABLE = "Profiles";
+	private static final String DB_USERS_TABLE = "Users";
+	private static final String DB_FOLLOWERS_TABLE = "Followers";
+	private static final String DB_FOLLOWING_TABLE = "Following";
 	private static final String USERID = "userId";
+	
+	MongoCollection<Profile> usersCol;
+	MongoCollection<UserFollowRelation> followersCol;
+	MongoCollection<UserFollowRelation> followingCol;
 	
 	public MongoProfiles() throws UnknownHostException {
 		MongoClient mongo = new MongoClient( MONGO_HOSTNAME );
@@ -45,17 +52,20 @@ public class MongoProfiles implements Profiles {
 		
 		//nome arbitrario para a database?
 		db = mongo.getDatabase(DB_NAME).withCodecRegistry(pojoCodecRegistry);
-		//necessario ir buscar em cada metodo ou no construtor basta?
-		dbCol = db.getCollection(DB_TABLE, Profile.class);
-		
+		//basta ir buscar a collection no construtor? -> bson propertys do Profile, apesar das variaveis
+		usersCol = db.getCollection(DB_USERS_TABLE, Profile.class);
 		//criar index no construtor?
-		dbCol.createIndex(Indexes.ascending(USERID), new IndexOptions().unique(true));
+		usersCol.createIndex(Indexes.ascending(USERID), new IndexOptions().unique(true));
+		
+		followersCol = db.getCollection(DB_USERS_TABLE, UserFollowRelation.class);
+		followingCol = db.getCollection(DB_USERS_TABLE, UserFollowRelation.class);
+		
 		
 	}
 
 	@Override
 	public Result<Profile> getProfile(String userId) {	//posso fazer a comparacao do profile==null?
-		Profile profile = dbCol.find(Filters.eq(USERID, userId)).first();
+		Profile profile = usersCol.find(Filters.eq(USERID, userId)).first();
 		
 		if(profile==null)
 			return error(NOT_FOUND);
@@ -68,7 +78,7 @@ public class MongoProfiles implements Profiles {
 	public Result<Void> createProfile(Profile profile) {
 		
 		try{
-			dbCol.insertOne(profile);
+			usersCol.insertOne(profile);
 			return ok();
 		}catch( MongoWriteException x ) {
 		    return error( CONFLICT );
@@ -77,7 +87,7 @@ public class MongoProfiles implements Profiles {
 
 	@Override
 	public Result<Void> deleteProfile(String userId) {
-		// TODO Auto-generated method stub
+		//while (col.findOneAndRemove(...)!= null) com filtro do gajo que queremos remover
 		return null;
 	}
 
