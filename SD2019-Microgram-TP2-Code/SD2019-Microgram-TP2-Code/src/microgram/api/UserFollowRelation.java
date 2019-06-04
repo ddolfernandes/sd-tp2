@@ -8,6 +8,9 @@ public class UserFollowRelation {
 	private String userId;
 	private String userId2;
 	
+	
+	
+//TODO construtor vazio
 	@BsonCreator
 	public UserFollowRelation(@BsonProperty("userId") String userId,@BsonProperty("userId2") String userId2) {
 		
