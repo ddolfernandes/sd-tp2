@@ -34,8 +34,8 @@ public class MongoProfiles implements Profiles {
 
 	private MongoDatabase db;
 
-	private static final String MONGO_HOSTNAME = "mongodb://mongo1,mongo2,mongo3";
-	
+	private static final String MONGO_HOSTNAME = "mongo1";
+
 	private static final String DB_NAME = "mongoDataBase";
 	private static final String DB_USERS_TABLE = "Users";
 	private static final String DB_FOLLOWERS_TABLE = "Followers";
@@ -49,27 +49,18 @@ public class MongoProfiles implements Profiles {
 	public MongoProfiles() throws UnknownHostException {
 		MongoClient mongo = new MongoClient(MONGO_HOSTNAME);
 
-		// e suposto ter CodecRegistries antes do fromRegistries e do fromProviders?
 		CodecRegistry pojoCodecRegistry = CodecRegistries.fromRegistries(MongoClient.getDefaultCodecRegistry(),
 				CodecRegistries.fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
 		// nome arbitrario para a database?
 		db = mongo.getDatabase(DB_NAME).withCodecRegistry(pojoCodecRegistry);
-		// basta ir buscar a collection no construtor? -> bson propertys do Profile,
-
 		usersCol = db.getCollection(DB_USERS_TABLE, Profile.class);
-
 		usersCol.createIndex(Indexes.ascending(USERID), new IndexOptions().unique(true));
 
 		followersCol = db.getCollection(DB_USERS_TABLE, UserFollowRelation.class);
 		followersCol.createIndex(Indexes.ascending(USERID, USERID2), new IndexOptions().unique(true)); // nao preciso
-																										// ter duas
-																										// tabelas,
-																										// apenas uma
-																										// que guarda
-																										// ambos, com
-		// pq preciso de um index no USERID2?
-
+		followersCol.createIndex(Indexes.hashed(USERID2)); 
+		
 	}
 
 	/*
@@ -119,9 +110,8 @@ public class MongoProfiles implements Profiles {
 		return ok();
 	}
 
-	
 	@Override
-	public Result<List<Profile>> search(String prefix) { //regex do search?
+	public Result<List<Profile>> search(String prefix) { // regex do search?
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -130,7 +120,7 @@ public class MongoProfiles implements Profiles {
 	public Result<Void> follow(String userId1, String userId2, boolean isFollowing) {
 		if (!profileExists(userId1) || !profileExists(userId2))
 			return error(NOT_FOUND);
-		
+
 		return null;
 
 	}
