@@ -23,6 +23,7 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.result.DeleteResult;
 
+import microgram.api.Post;
 import microgram.api.Profile;
 import microgram.api.UserFollowRelation;
 import microgram.api.java.Profiles;
@@ -41,9 +42,13 @@ public class MongoProfiles implements Profiles {
 	private static final String DB_FOLLOWERS_TABLE = "Followers";
 	private static final String USERID = "userId";
 	private static final String USERID2 = "userId2";
+	private static final String OWNERID = "ownerId";
+	private static final String POSTID = "postId";
+	private static final String DB_POSTS_TABLE = "Posts";
 
 	MongoCollection<Profile> usersCol;
 	MongoCollection<UserFollowRelation> followersCol; // userId esta a seguir userId2
+	MongoCollection<Post> postsCol;
 
 	public MongoProfiles() throws UnknownHostException {
 		MongoClient mongo = new MongoClient(MONGO_HOSTNAME);
@@ -59,6 +64,8 @@ public class MongoProfiles implements Profiles {
 		followersCol = db.getCollection(DB_FOLLOWERS_TABLE, UserFollowRelation.class);
 		followersCol.createIndex(Indexes.ascending(USERID, USERID2), new IndexOptions().unique(true)); // nao preciso
 		followersCol.createIndex(Indexes.hashed(USERID2));
+		
+		postsCol = db.getCollection(DB_POSTS_TABLE, Post.class);
 
 	}
 
@@ -78,8 +85,11 @@ public class MongoProfiles implements Profiles {
 																					// exceed an integer
 		int followers = (int) usersCol.countDocuments(Filters.eq(USERID2, userId));
 
+		int posts = (int) postsCol.countDocuments(Filters.eq(OWNERID, userId));
+
 		profile.setFollowers(followers);
 		profile.setFollowing(following);
+		profile.setPosts(posts);
 		return ok(profile);
 
 	}
