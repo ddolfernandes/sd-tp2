@@ -16,6 +16,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
@@ -142,11 +143,18 @@ public class MongoPosts implements Posts {
 		// ele existe, logo vamos buscar os followers dele
 		
 		List<String> feed = new ArrayList<>();
-		postsCol.find(Filters.eq(OWNERID, userId)).forEach((Post doc) -> {	
+		
+		
+		MongoCursor<Post> cursor =  postsCol.find(Filters.eq(OWNERID, userId)).iterator();
+		while(cursor.hasNext()) {
+			feed.add(cursor.next().getPostId());
+		}
+		
+		/*postsCol.find(Filters.eq(OWNERID, userId)).forEach((Post doc) -> {	
 
 			feed.add(doc.getPostId());
 		});;
-		
+		*/
 		return ok(feed);
 	}
 
@@ -157,13 +165,28 @@ public class MongoPosts implements Posts {
 
 		// ele existe, logo vamos buscar os followers dele
 		List<String> feed = new ArrayList<>();
+		
+		MongoCursor<UserFollowRelation> cursor = followersCol.find(Filters.eq(USERID, userId)).iterator();
+		
+		while(cursor.hasNext()) {
+			
+			UserFollowRelation doc = cursor.next();
+			MongoCursor<Post> cursor2 = postsCol.find(Filters.eq(OWNERID, doc.getUserId2())).iterator();
+			
+			while(cursor2.hasNext()) {
+				Post docc = cursor2.next();
+				feed.add(docc.getPostId());
+			}
+			
+		}
+		/*
 		followersCol.find(Filters.eq(USERID, userId)).forEach((UserFollowRelation doc) -> {  //para cada utilizador que userId esta a seguir
 
 			postsCol.find(Filters.eq(OWNERID, doc.getUserId2())).forEach((Post docc) -> {	//para cada post de cada utilizador que o userId esta a seguir
 
 				feed.add(docc.getPostId());
 			});
-		});
+		});*/
 
 		return ok(feed);
 

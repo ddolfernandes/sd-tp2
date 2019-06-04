@@ -18,6 +18,7 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
@@ -32,7 +33,7 @@ import microgram.api.java.Result;
 
 public class MongoProfiles implements Profiles {
 
-	// melhor maneira de modelar os followers e following?
+	
 
 	private MongoDatabase db;
 
@@ -127,9 +128,17 @@ public class MongoProfiles implements Profiles {
 		
 		String regex = "^"+prefix+".*$";
 		
+		
+		MongoCursor<Profile> cursor =  usersCol.find(Filters.regex(USERID,regex )).iterator();
+		while(cursor.hasNext()) {
+			Profile doc = cursor.next();
+			matches.add(doc);
+		}
+		
+		/*
 		usersCol.find(Filters.regex(USERID,regex )).forEach((Profile doc) -> {
 			matches.add(doc);
-		});;
+		});;*/
 		
 		return ok(matches);
 	}
