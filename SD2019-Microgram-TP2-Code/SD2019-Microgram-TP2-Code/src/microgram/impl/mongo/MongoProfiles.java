@@ -6,6 +6,7 @@ import static microgram.api.java.Result.ErrorCode.CONFLICT;
 import static microgram.api.java.Result.ErrorCode.NOT_FOUND;
 
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.bson.Document;
@@ -121,8 +122,16 @@ public class MongoProfiles implements Profiles {
 
 	@Override
 	public Result<List<Profile>> search(String prefix) { // regex do search?
-		// TODO Auto-generated method stub
-		return null;
+		
+		List<Profile> matches = new ArrayList<>();
+		
+		String regex = "^"+prefix+".*$";
+		
+		usersCol.find(Filters.regex(USERID,regex )).forEach((Profile doc) -> {
+			matches.add(doc);
+		});;
+		
+		return ok(matches);
 	}
 
 	@Override
