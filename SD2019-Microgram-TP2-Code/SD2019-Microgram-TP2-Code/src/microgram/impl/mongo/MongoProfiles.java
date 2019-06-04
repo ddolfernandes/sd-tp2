@@ -120,8 +120,17 @@ public class MongoProfiles implements Profiles {
 	public Result<Void> follow(String userId1, String userId2, boolean isFollowing) {
 		if (!profileExists(userId1) || !profileExists(userId2))
 			return error(NOT_FOUND);
-
-		return null;
+		
+		if(isFollowing) { //adicionar
+			UserFollowRelation temp = new UserFollowRelation(userId1,userId2);
+			followersCol.insertOne(temp);
+			
+		}else { //remover
+			followersCol.deleteOne(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2)));
+			
+		}
+		
+		return ok();
 
 	}
 

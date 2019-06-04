@@ -10,7 +10,7 @@ public class UserFollowRelation {
 	
 	
 	
-//TODO construtor vazio
+
 	@BsonCreator
 	public UserFollowRelation(@BsonProperty("userId") String userId,@BsonProperty("userId2") String userId2) {
 		
@@ -20,6 +20,11 @@ public class UserFollowRelation {
 	}
 
 	
+	public UserFollowRelation() {
+		// TODO Auto-generated constructor stub
+	}
+
+
 	//necessario??
 	public String getUserId() {
 		return userId;
