@@ -39,7 +39,6 @@ public class MongoProfiles implements Profiles {
 	private static final String DB_NAME = "mongoDataBase";
 	private static final String DB_USERS_TABLE = "Users";
 	private static final String DB_FOLLOWERS_TABLE = "Followers";
-	private static final String DB_FOLLOWING_TABLE = "Following";
 	private static final String USERID = "userId";
 	private static final String USERID2 = "userId2";
 
@@ -57,14 +56,14 @@ public class MongoProfiles implements Profiles {
 		usersCol = db.getCollection(DB_USERS_TABLE, Profile.class);
 		usersCol.createIndex(Indexes.ascending(USERID), new IndexOptions().unique(true));
 
-		followersCol = db.getCollection(DB_USERS_TABLE, UserFollowRelation.class);
+		followersCol = db.getCollection(DB_FOLLOWERS_TABLE, UserFollowRelation.class);
 		followersCol.createIndex(Indexes.ascending(USERID, USERID2), new IndexOptions().unique(true)); // nao preciso
-		followersCol.createIndex(Indexes.hashed(USERID2)); 
-		
+		followersCol.createIndex(Indexes.hashed(USERID2));
+
 	}
 
 	/*
-	 * retorna com estatisticas certas
+	 * falta retornar as estatisticas dos posts, aka ir buscar tabela dos posts
 	 * 
 	 */
 	@Override
@@ -120,16 +119,16 @@ public class MongoProfiles implements Profiles {
 	public Result<Void> follow(String userId1, String userId2, boolean isFollowing) {
 		if (!profileExists(userId1) || !profileExists(userId2))
 			return error(NOT_FOUND);
-		
-		if(isFollowing) { //adicionar
-			UserFollowRelation temp = new UserFollowRelation(userId1,userId2);
+
+		if (isFollowing) { // adicionar
+			UserFollowRelation temp = new UserFollowRelation(userId1, userId2);
 			followersCol.insertOne(temp);
-			
-		}else { //remover
+
+		} else { // remover
 			followersCol.deleteOne(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2)));
-			
+
 		}
-		
+
 		return ok();
 
 	}
