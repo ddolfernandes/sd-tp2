@@ -1,7 +1,53 @@
 package microgram.impl.mongo;
 
-import microgram.api.java.Posts;
+import java.util.List;
 
-public abstract class _TODO_MongoPosts implements Posts {
+import microgram.api.Post;
+import microgram.api.java.Posts;
+import microgram.api.java.Result;
+
+public class _TODO_MongoPosts implements Posts {
+
+	@Override
+	public Result<Post> getPost(String postId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result<String> createPost(Post post) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result<Void> deletePost(String postId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result<Void> like(String postId, String userId, boolean isLiked) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result<Boolean> isLiked(String postId, String userId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result<List<String>> getPosts(String userId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public Result<List<String>> getFeed(String userId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 
 }
