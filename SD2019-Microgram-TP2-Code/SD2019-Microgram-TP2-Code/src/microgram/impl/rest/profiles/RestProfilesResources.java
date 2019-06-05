@@ -11,7 +11,7 @@ public class RestProfilesResources extends RestResource implements RestProfiles 
 
 	protected final Profiles impl;
 
-	protected RestProfilesResources(Profiles impl) {
+	public RestProfilesResources(Profiles impl) {
 		this.impl = impl;
 	}
 

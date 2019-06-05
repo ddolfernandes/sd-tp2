@@ -15,6 +15,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoWriteException;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -34,8 +35,20 @@ public class MongoPosts implements Posts {
 
 	private MongoDatabase db;
 
-	private static final String MONGO_HOSTNAME = "mongo1";
-
+	//private static final String MONGO_HOSTNAME = "mongo1";
+	
+	private static final String[] hostnames = {"mongo1","mongo2","mongo3"};
+	private static final ServerAddress MONGO1_HOSTNAME = new ServerAddress("mongo1");
+	private static final ServerAddress MONGO2_HOSTNAME = new ServerAddress("mongo2");
+	private static final ServerAddress MONGO3_HOSTNAME = new ServerAddress("mongo3");
+	private static final ArrayList<ServerAddress> MONGO_HOSTNAME = new ArrayList<ServerAddress>() {
+		{
+			add(MONGO1_HOSTNAME);
+			add(MONGO2_HOSTNAME);
+			add(MONGO3_HOSTNAME);
+			
+		}
+	};
 	private static final String DB_NAME = "mongoDataBase";
 	private static final String DB_POSTS_TABLE = "Posts";
 	private static final String DB_LIKES_TABLE = "Likes";
@@ -58,7 +71,7 @@ public class MongoPosts implements Posts {
 
 		db = mongo.getDatabase(DB_NAME).withCodecRegistry(pojoCodecRegistry);
 		postsCol = db.getCollection(DB_POSTS_TABLE, Post.class);
-		postsCol.createIndex(Indexes.ascending(USERID), new IndexOptions().unique(true));
+		postsCol.createIndex(Indexes.ascending(POSTID), new IndexOptions().unique(true));
 		postsCol.createIndex(Indexes.hashed(OWNERID));
 
 		likesCol = db.getCollection(DB_LIKES_TABLE, PostLikesRelation.class);
@@ -87,8 +100,15 @@ public class MongoPosts implements Posts {
 	@Override
 	public Result<String> createPost(Post post) {
 		try {
+			String ownerId = post.getOwnerId();
+
+			Profile profile = usersCol.find(Filters.eq(USERID, ownerId)).first();
+
+			if (profile == null)
+				return error(NOT_FOUND);
+
 			postsCol.insertOne(post);
-			return ok();
+			return ok(post.getPostId());
 		} catch (MongoWriteException x) {
 			return error(CONFLICT);
 		}
@@ -96,6 +116,9 @@ public class MongoPosts implements Posts {
 
 	@Override
 	public Result<Void> deletePost(String postId) {
+		if (!postExists(postId))
+			return error(NOT_FOUND);
+
 		DeleteResult res = postsCol.deleteOne(Filters.eq(POSTID, postId));
 
 		if (!res.wasAcknowledged())
@@ -111,12 +134,22 @@ public class MongoPosts implements Posts {
 		if (!profileExists(userId) || !postExists(postId))
 			return error(NOT_FOUND);
 
+		PostLikesRelation exists = likesCol.find(Filters.and(Filters.eq(POSTID, postId), Filters.eq(USERID, userId)))
+				.first();
+
 		if (isLiked) {
+			if (exists != null)
+				return error(CONFLICT);
+
 			PostLikesRelation temp = new PostLikesRelation(postId, userId); // adiciona entrada representando um gosto
 																			// do userId ao postId
 			likesCol.insertOne(temp);
 
 		} else { // remover
+			
+			if (exists == null)
+				return error(NOT_FOUND);
+			
 			likesCol.deleteOne(Filters.and(Filters.eq(USERID, postId), Filters.eq(USERID, userId)));
 
 		}
@@ -141,20 +174,19 @@ public class MongoPosts implements Posts {
 			return error(NOT_FOUND);
 
 		// ele existe, logo vamos buscar os followers dele
-		
-		List<String> feed = new ArrayList<>();
-		
-		
-		MongoCursor<Post> cursor =  postsCol.find(Filters.eq(OWNERID, userId)).iterator();
-		while(cursor.hasNext()) {
-			feed.add(cursor.next().getPostId());
-		}
-		
-		/*postsCol.find(Filters.eq(OWNERID, userId)).forEach((Post doc) -> {	
 
-			feed.add(doc.getPostId());
-		});;
-		*/
+		List<String> feed = new ArrayList<>();
+
+		try (MongoCursor<Post> cursor = postsCol.find(Filters.eq(OWNERID, userId)).iterator()) {
+			while (cursor.hasNext()) {
+				feed.add(cursor.next().getPostId());
+			}
+		}
+		/*
+		 * postsCol.find(Filters.eq(OWNERID, userId)).forEach((Post doc) -> {
+		 * 
+		 * feed.add(doc.getPostId()); });;
+		 */
 		return ok(feed);
 	}
 
@@ -165,28 +197,31 @@ public class MongoPosts implements Posts {
 
 		// ele existe, logo vamos buscar os followers dele
 		List<String> feed = new ArrayList<>();
-		
-		MongoCursor<UserFollowRelation> cursor = followersCol.find(Filters.eq(USERID, userId)).iterator();
-		
-		while(cursor.hasNext()) {
-			
-			UserFollowRelation doc = cursor.next();
-			MongoCursor<Post> cursor2 = postsCol.find(Filters.eq(OWNERID, doc.getUserId2())).iterator();
-			
-			while(cursor2.hasNext()) {
-				Post docc = cursor2.next();
-				feed.add(docc.getPostId());
+
+		try (MongoCursor<UserFollowRelation> cursor = followersCol.find(Filters.eq(USERID, userId)).iterator()) {
+
+			while (cursor.hasNext()) {
+
+				UserFollowRelation doc = cursor.next();
+				MongoCursor<Post> cursor2 = postsCol.find(Filters.eq(OWNERID, doc.getUserId2())).iterator();
+
+				while (cursor2.hasNext()) {
+					Post docc = cursor2.next();
+					feed.add(docc.getPostId());
+				}
+
 			}
-			
+
 		}
 		/*
-		followersCol.find(Filters.eq(USERID, userId)).forEach((UserFollowRelation doc) -> {  //para cada utilizador que userId esta a seguir
-
-			postsCol.find(Filters.eq(OWNERID, doc.getUserId2())).forEach((Post docc) -> {	//para cada post de cada utilizador que o userId esta a seguir
-
-				feed.add(docc.getPostId());
-			});
-		});*/
+		 * followersCol.find(Filters.eq(USERID, userId)).forEach((UserFollowRelation
+		 * doc) -> { //para cada utilizador que userId esta a seguir
+		 * 
+		 * postsCol.find(Filters.eq(OWNERID, doc.getUserId2())).forEach((Post docc) -> {
+		 * //para cada post de cada utilizador que o userId esta a seguir
+		 * 
+		 * feed.add(docc.getPostId()); }); });
+		 */
 
 		return ok(feed);
 

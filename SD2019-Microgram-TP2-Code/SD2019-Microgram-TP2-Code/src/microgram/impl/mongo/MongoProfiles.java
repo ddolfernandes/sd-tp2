@@ -17,6 +17,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.MongoWriteException;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -33,11 +34,23 @@ import microgram.api.java.Result;
 
 public class MongoProfiles implements Profiles {
 
-	
-
 	private MongoDatabase db;
 
-	private static final String MONGO_HOSTNAME = "mongo1";
+	//private static final String MONGO_HOSTNAME = "mongo1";
+	
+		private static final String[] hostnames = {"mongo1","mongo2","mongo3"};
+		private static final ServerAddress MONGO1_HOSTNAME = new ServerAddress("mongo1");
+		private static final ServerAddress MONGO2_HOSTNAME = new ServerAddress("mongo2");
+		private static final ServerAddress MONGO3_HOSTNAME = new ServerAddress("mongo3");
+		private static final ArrayList<ServerAddress> MONGO_HOSTNAME = new ArrayList<ServerAddress>() {
+			{
+				add(MONGO1_HOSTNAME);
+				add(MONGO2_HOSTNAME);
+				add(MONGO3_HOSTNAME);
+				
+			}
+		};
+
 
 	private static final String DB_NAME = "mongoDataBase";
 	private static final String DB_USERS_TABLE = "Users";
@@ -66,7 +79,7 @@ public class MongoProfiles implements Profiles {
 		followersCol = db.getCollection(DB_FOLLOWERS_TABLE, UserFollowRelation.class);
 		followersCol.createIndex(Indexes.ascending(USERID, USERID2), new IndexOptions().unique(true)); // nao preciso
 		followersCol.createIndex(Indexes.hashed(USERID2));
-		
+
 		postsCol = db.getCollection(DB_POSTS_TABLE, Post.class);
 
 	}
@@ -83,9 +96,9 @@ public class MongoProfiles implements Profiles {
 		if (profile == null)
 			return error(NOT_FOUND);
 
-		int following = (int) usersCol.countDocuments(Filters.eq(USERID, userId)); // assumes number of followers doesnt
+		int following = (int) followersCol.countDocuments(Filters.eq(USERID, userId)); // assumes number of followers doesnt
 																					// exceed an integer
-		int followers = (int) usersCol.countDocuments(Filters.eq(USERID2, userId));
+		int followers = (int) followersCol.countDocuments(Filters.eq(USERID2, userId));
 
 		int posts = (int) postsCol.countDocuments(Filters.eq(OWNERID, userId));
 
@@ -109,6 +122,11 @@ public class MongoProfiles implements Profiles {
 
 	@Override
 	public Result<Void> deleteProfile(String userId) {
+		
+		Profile profile = usersCol.find(Filters.eq(USERID, userId)).first();
+		
+		if(profile == null)
+			return error(NOT_FOUND);
 
 		DeleteResult res = usersCol.deleteOne(Filters.eq(USERID, userId));
 
@@ -117,29 +135,29 @@ public class MongoProfiles implements Profiles {
 
 		followersCol.deleteMany(Filters.eq(USERID, userId)); // apaga quem nos estamos a seguir
 		followersCol.deleteMany(Filters.eq(USERID2, userId)); // apaga quem nos esta a seguir
+		postsCol.deleteMany(Filters.eq(OWNERID, userId));
 
 		return ok();
 	}
 
 	@Override
 	public Result<List<Profile>> search(String prefix) { // regex do search?
-		
+
 		List<Profile> matches = new ArrayList<>();
-		
-		String regex = "^"+prefix+".*$";
-		
-		
-		MongoCursor<Profile> cursor =  usersCol.find(Filters.regex(USERID,regex )).iterator();
-		while(cursor.hasNext()) {
-			Profile doc = cursor.next();
-			matches.add(doc);
+
+		String regex = "^" + prefix + ".*$";
+
+		try (MongoCursor<Profile> cursor = usersCol.find(Filters.regex(USERID, regex)).iterator()) {
+			while (cursor.hasNext()) {
+				Profile doc = cursor.next();
+				matches.add(doc);
+			}
 		}
-		
 		/*
-		usersCol.find(Filters.regex(USERID,regex )).forEach((Profile doc) -> {
-			matches.add(doc);
-		});;*/
-		
+		 * usersCol.find(Filters.regex(USERID,regex )).forEach((Profile doc) -> {
+		 * matches.add(doc); });;
+		 */
+
 		return ok(matches);
 	}
 
@@ -147,12 +165,22 @@ public class MongoProfiles implements Profiles {
 	public Result<Void> follow(String userId1, String userId2, boolean isFollowing) {
 		if (!profileExists(userId1) || !profileExists(userId2))
 			return error(NOT_FOUND);
+		
+		UserFollowRelation exists = followersCol.find(Filters.and(Filters.eq(USERID,userId1),Filters.eq(USERID2, userId2))).first();
+			
 
 		if (isFollowing) { // adicionar
+			if(exists != null)
+				return error(CONFLICT);
+						
 			UserFollowRelation temp = new UserFollowRelation(userId1, userId2);
 			followersCol.insertOne(temp);
 
 		} else { // remover
+			
+			if(exists==null)
+				return error(NOT_FOUND);
+			
 			followersCol.deleteOne(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2)));
 
 		}
@@ -166,10 +194,10 @@ public class MongoProfiles implements Profiles {
 		if (!profileExists(userId1) || !profileExists(userId2))
 			return error(NOT_FOUND);
 
-		boolean isFollowing = followersCol
-				.countDocuments(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2))) != 0;
+		UserFollowRelation temp = followersCol
+				.find(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2))).first();
 
-		return ok(isFollowing);
+		return ok(temp!=null);
 	}
 
 	/*

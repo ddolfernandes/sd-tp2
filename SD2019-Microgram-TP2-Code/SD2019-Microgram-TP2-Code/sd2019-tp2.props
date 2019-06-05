@@ -31,8 +31,8 @@ profiles-truststore-password=
 
 mediastorage-truststore=
 mediastorage-truststore-password=
-mediastorage-keystore=/home/sd/mediastorage.ks
+mediastorage-keystore=/home/sd/mediaserver.ks
 mediastorage-keystore-password=123456
 
-tester-truststore=/home/sd/client-trustore.ks
-tester-truststore-password=123456
+tester-truststore=/home/sd/tester.ks
+tester-truststore-password=changeit

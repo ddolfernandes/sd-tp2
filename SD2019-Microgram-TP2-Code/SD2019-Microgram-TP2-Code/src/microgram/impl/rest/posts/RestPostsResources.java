@@ -11,7 +11,7 @@ public class RestPostsResources extends RestResource implements RestPosts {
 
 	protected final Posts impl;
 
-	protected RestPostsResources(Posts impl) {
+	public RestPostsResources(Posts impl) {
 		this.impl = impl;		
 	}
 

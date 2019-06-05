@@ -231,7 +231,7 @@ public class DropboxMedia implements Media // este cliente vai servir para falar
 
 			// o dropbox_ap_arg vai em json, codificado num objeto do tipo json (tem que ser
 			// dinamico)
-			upload.addHeader(DROPBOX_API_ARG, JSON.encode(new CreateFileV2Args(filename)));
+			upload.addHeader(DROPBOX_API_ARG, JSON.encode(new CreateFileV2Args("/"+filename)));
 
 			upload.setPayload(bytes);
 
@@ -277,7 +277,7 @@ public class DropboxMedia implements Media // este cliente vai servir para falar
 
 			downloadFile.addHeader("Content-Type", OCTETSTREAM_CONTENT_TYPE); // na documentacao nao aparece, mas e um
 																				// erro, devia
-			downloadFile.addHeader(DROPBOX_API_ARG, JSON.encode(new AccessFileV2Args(filename)));
+			downloadFile.addHeader(DROPBOX_API_ARG, JSON.encode(new AccessFileV2Args("/"+filename)));
 
 			service.signRequest(accessToken, downloadFile);
 			Response r = service.execute(downloadFile);
@@ -333,12 +333,12 @@ public class DropboxMedia implements Media // este cliente vai servir para falar
 
 			deleteFile.addHeader("Content-Type", JSON_CONTENT_TYPE); // na documentacao nao aparece, mas e um erro,
 																		// devia
-			deleteFile.setPayload(JSON.encode(new AccessFileV2Args(filename)));
+			deleteFile.setPayload(JSON.encode(new AccessFileV2Args("/"+filename)));
 
 			service.signRequest(accessToken, deleteFile);
 			Response r = service.execute(deleteFile);
 
-			if (r.getCode() == 404) {
+			if (r.getCode() == 409) {
 
 				System.out.println("Dropbox file does not exists");
 				return Result.error(Result.ErrorCode.NOT_FOUND);
