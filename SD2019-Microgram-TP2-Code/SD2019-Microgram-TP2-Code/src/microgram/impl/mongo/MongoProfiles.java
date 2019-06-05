@@ -27,6 +27,7 @@ import com.mongodb.client.model.Indexes;
 import com.mongodb.client.result.DeleteResult;
 
 import microgram.api.Post;
+import microgram.api.PostLikesRelation;
 import microgram.api.Profile;
 import microgram.api.UserFollowRelation;
 import microgram.api.java.Profiles;
@@ -36,21 +37,21 @@ public class MongoProfiles implements Profiles {
 
 	private MongoDatabase db;
 
-	//private static final String MONGO_HOSTNAME = "mongo1";
-	
-		private static final String[] hostnames = {"mongo1","mongo2","mongo3"};
-		private static final ServerAddress MONGO1_HOSTNAME = new ServerAddress("mongo1");
-		private static final ServerAddress MONGO2_HOSTNAME = new ServerAddress("mongo2");
-		private static final ServerAddress MONGO3_HOSTNAME = new ServerAddress("mongo3");
-		private static final ArrayList<ServerAddress> MONGO_HOSTNAME = new ArrayList<ServerAddress>() {
-			{
-				add(MONGO1_HOSTNAME);
-				add(MONGO2_HOSTNAME);
-				add(MONGO3_HOSTNAME);
-				
-			}
-		};
+	// private static final String MONGO_HOSTNAME = "mongo1";
 
+	private static final String[] hostnames = { "mongo1", "mongo2", "mongo3" };
+	private static final ServerAddress MONGO1_HOSTNAME = new ServerAddress("mongo1");
+	private static final ServerAddress MONGO2_HOSTNAME = new ServerAddress("mongo2");
+	private static final ServerAddress MONGO3_HOSTNAME = new ServerAddress("mongo3");
+
+	private static final ArrayList<ServerAddress> MONGO_HOSTNAME = new ArrayList<ServerAddress>() {
+		{
+			add(MONGO1_HOSTNAME);
+			add(MONGO2_HOSTNAME);
+			add(MONGO3_HOSTNAME);
+
+		}
+	};
 
 	private static final String DB_NAME = "mongoDataBase";
 	private static final String DB_USERS_TABLE = "Users";
@@ -60,7 +61,9 @@ public class MongoProfiles implements Profiles {
 	private static final String OWNERID = "ownerId";
 	private static final String POSTID = "postId";
 	private static final String DB_POSTS_TABLE = "Posts";
-
+	private static final String DB_LIKES_TABLE = "Likes";
+	
+	MongoCollection<PostLikesRelation> likesCol;
 	MongoCollection<Profile> usersCol;
 	MongoCollection<UserFollowRelation> followersCol; // userId esta a seguir userId2
 	MongoCollection<Post> postsCol;
@@ -81,6 +84,7 @@ public class MongoProfiles implements Profiles {
 		followersCol.createIndex(Indexes.hashed(USERID2));
 
 		postsCol = db.getCollection(DB_POSTS_TABLE, Post.class);
+		likesCol = db.getCollection(DB_LIKES_TABLE, PostLikesRelation.class);
 
 	}
 
@@ -96,8 +100,9 @@ public class MongoProfiles implements Profiles {
 		if (profile == null)
 			return error(NOT_FOUND);
 
-		int following = (int) followersCol.countDocuments(Filters.eq(USERID, userId)); // assumes number of followers doesnt
-																					// exceed an integer
+		int following = (int) followersCol.countDocuments(Filters.eq(USERID, userId)); // assumes number of followers
+																						// doesnt
+																						// exceed an integer
 		int followers = (int) followersCol.countDocuments(Filters.eq(USERID2, userId));
 
 		int posts = (int) postsCol.countDocuments(Filters.eq(OWNERID, userId));
@@ -122,10 +127,10 @@ public class MongoProfiles implements Profiles {
 
 	@Override
 	public Result<Void> deleteProfile(String userId) {
-		
+
 		Profile profile = usersCol.find(Filters.eq(USERID, userId)).first();
-		
-		if(profile == null)
+
+		if (profile == null)
 			return error(NOT_FOUND);
 
 		DeleteResult res = usersCol.deleteOne(Filters.eq(USERID, userId));
@@ -136,6 +141,7 @@ public class MongoProfiles implements Profiles {
 		followersCol.deleteMany(Filters.eq(USERID, userId)); // apaga quem nos estamos a seguir
 		followersCol.deleteMany(Filters.eq(USERID2, userId)); // apaga quem nos esta a seguir
 		postsCol.deleteMany(Filters.eq(OWNERID, userId));
+		likesCol.deleteMany(Filters.eq(USERID,userId));
 
 		return ok();
 	}
@@ -165,22 +171,22 @@ public class MongoProfiles implements Profiles {
 	public Result<Void> follow(String userId1, String userId2, boolean isFollowing) {
 		if (!profileExists(userId1) || !profileExists(userId2))
 			return error(NOT_FOUND);
-		
-		UserFollowRelation exists = followersCol.find(Filters.and(Filters.eq(USERID,userId1),Filters.eq(USERID2, userId2))).first();
-			
+
+		UserFollowRelation exists = followersCol
+				.find(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2))).first();
 
 		if (isFollowing) { // adicionar
-			if(exists != null)
+			if (exists != null)
 				return error(CONFLICT);
-						
+
 			UserFollowRelation temp = new UserFollowRelation(userId1, userId2);
 			followersCol.insertOne(temp);
 
 		} else { // remover
-			
-			if(exists==null)
+
+			if (exists == null)
 				return error(NOT_FOUND);
-			
+
 			followersCol.deleteOne(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2)));
 
 		}
@@ -197,7 +203,7 @@ public class MongoProfiles implements Profiles {
 		UserFollowRelation temp = followersCol
 				.find(Filters.and(Filters.eq(USERID, userId1), Filters.eq(USERID2, userId2))).first();
 
-		return ok(temp!=null);
+		return ok(temp != null);
 	}
 
 	/*
